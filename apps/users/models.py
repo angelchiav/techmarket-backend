@@ -3,9 +3,10 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     """Custom User for e-commerce"""
-    email= models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
     birth_date = models.DateField(null=True, blank=True)
+    address = models.CharField(max_length=255)
 
     is_verified = models.BooleanField(default=False) # If the email is verified.
     accepts_marketing = models.BooleanField(default=False) # If the user accepts marketing.
@@ -17,12 +18,22 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     def __str__(self):
-        return f'{self.email} - {self.get_full_name()}'
+        return self.email
     
     @property
     def full_name(self):
         return f'{self.first_name} {self.last_name}'.strip()
     
+    @property
+    def orders(self):
+        """Return all orders for this user"""
+        return self.order_set.all()
+    
+    @property
+    def is_premium_customer(self):
+        """Check if user has any premium orders"""
+        return self.orders.filter(name__icontains='premium').exists()
+
 class UserProfile(models.Model):
     """Extended user profile"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -34,12 +45,11 @@ class UserProfile(models.Model):
         return f"{self.user.email}'s profile."
     
 class Address(models.Model):
-
-    ADDRESS_TYPES =[
-    ('shipping', 'Shipping'),
-    ('billing', 'Billing'),
-    ('both', 'Both'),
-]
+    ADDRESS_TYPES = [
+        ('shipping', 'Shipping'),
+        ('billing', 'Billing'),
+        ('both', 'Both'),
+    ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
     type = models.CharField(max_length=10, choices=ADDRESS_TYPES, default='shipping')
@@ -47,6 +57,7 @@ class Address(models.Model):
     street_address = models.CharField(max_length=200)
     apartment = models.CharField(max_length=30, blank=True)
     city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
     postal_code = models.IntegerField(blank=False)
     country = models.CharField(max_length=100)
 
@@ -59,10 +70,16 @@ class Address(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name_plural = 'adresses'
+        verbose_name_plural = 'addresses'
 
     def __str__(self):
         return f'{self.street_address}, {self.city} - {self.user.email} - {self.user.full_name}'
+    
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            # Desactivar is_default en otras direcciones del mismo usuario
+            Address.objects.filter(user=self.user, is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
     
 class CustomerGroup(models.Model):
     """Selected group for discounts and benefits."""
@@ -79,7 +96,7 @@ class CustomerGroup(models.Model):
         return self.name
     
 """Many to many relationship between User and Customer Group."""
-User.add_to_class('customer groups', models.ManyToManyField(
+User.add_to_class('customer_groups', models.ManyToManyField(
     CustomerGroup,
     blank=True,
     related_name='users'
