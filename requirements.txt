@@ -1,0 +1,12 @@
+asgiref==3.8.1
+click==8.2.1
+coverage==7.9.1
+Django==5.2.3
+djangorestframework==3.16.0
+djangorestframework_simplejwt==5.5.0
+pillow==11.2.1
+PyJWT==2.9.0
+setuptools==80.9.0
+sqlparse==0.5.3
+svgwrite==1.4.3
+Tree==0.2.4
