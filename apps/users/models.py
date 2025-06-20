@@ -6,7 +6,9 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=15, blank=True, null=True)
     birth_date = models.DateField(null=True, blank=True)
-    address = models.CharField(max_length=255)
+    address = models.CharField(max_length=200)
+    city = models.CharField(max_length=150)
+    country = models.CharField(max_length=100)
 
     is_verified = models.BooleanField(default=False) # If the email is verified.
     accepts_marketing = models.BooleanField(default=False) # If the user accepts marketing.
